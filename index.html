@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rooftop CO₂ Harvester Simulation</title>
+  <!-- <link rel="stylesheet" href="style.css"> -->
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to bottom,#d0e8ff, #fff);
+      overflow: hidden;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    .roof {
+      position: relative;
+      width: 90vw;
+      height: 200px;
+      background: #aaa;
+      margin-top: 40px;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .fan {
+      position: absolute;
+      left: 10%;
+      top: 30%;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: #666;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .blade {
+      position: absolute;
+      width: 40px;
+      height: 4px;
+      background: white;
+      transform-origin: left center;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .filter {
+      position: absolute;
+      left: 40%;
+      top: 35%;
+      width: 150px;
+      height: 50px;
+      background: #ffd700;
+      border-radius: 5px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: black;
+      font-weight: bold;
+    }
+    .sensor-panel {
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-around;
+      width: 80%;
+    }
+    .sensor {
+      background: #f0f0f0;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      padding: 10px 20px;
+      width: 200px;
+      text-align: center;
+    }
+    .air-particle, .co2-particle {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      top: 50%;
+    }
+    .air-particle {
+      background-color: #00f;
+    }
+    .co2-particle {
+      background-color: #f00;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Rooftop CO₂ Harvester Prototype</h1>
+    <div class="roof" id="roof">
+      <div class="fan">
+        <div class="blade"></div>
+      </div>
+      <div class="filter">CO2 Filter</div>
+    </div>
+    <div class="sensor-panel">
+      <div class="sensor">
+        <strong>Sensor 1</strong>
+        <div id="sensor1-reading">-- PPM</div>
+      </div>
+      <div class="sensor">
+        <strong>Sensor 2</strong>
+        <div id="sensor2-reading">-- PPM</div>
+      </div>
+      <div class="sensor">
+        <strong>ESP32 Reading</strong>
+        <div id="esp32-reading">-- PPM</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const roof = document.getElementById("roof");
+    const sensor1Reading = document.getElementById("sensor1-reading");
+    const sensor2Reading = document.getElementById("sensor2-reading");
+    const esp32Reading = document.getElementById("esp32-reading");
+
+    class Particle {
+      constructor(isCO2) {
+        this.isCO2 = isCO2;
+        this.x = -20;
+        this.y = Math.random() * 180;
+        this.speed = 1 + Math.random() * 1.5;
+        this.element = document.createElement("div");
+        this.element.classList.add(isCO2 ? "co2-particle" : "air-particle");
+        roof.appendChild(this.element);
+        this.updatePosition();
+      }
+
+      updatePosition() {
+        this.element.style.transform = `translate(${this.x}px, ${this.y}px)`;
+      }
+
+      move() {
+        this.x += this.speed;
+        this.updatePosition();
+      }
+    }
+
+    const particles = [];
+
+    function generateParticles() {
+      const isCO2 = Math.random() < 0.4;
+      const particle = new Particle(isCO2);
+      particles.push(particle);
+    }
+
+    function updateParticles() {
+      let sensor1Count = 0;
+      let sensor2Count = 0;
+      let captured = 0;
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.move();
+
+        if (p.x > 200 && p.x < 250 && p.isCO2) {
+          p.element.style.opacity = 0;
+          captured++;
+          particles.splice(i, 1);
+          continue;
+        }
+
+        if (p.x < 100 && p.isCO2) sensor1Count++;
+        if (p.x > 300 && p.x < 400 && p.isCO2) sensor2Count++;
+
+        if (p.x > roof.clientWidth) {
+          roof.removeChild(p.element);
+          particles.splice(i, 1);
+        }
+      }
+
+      sensor1Reading.textContent = `${Math.round(sensor1Count * 10)} PPM`;
+      sensor2Reading.textContent = `${Math.round(sensor2Count * 10)} PPM`;
+      esp32Reading.textContent = `${Math.round(captured * 10)} PPM`;
+    }
+
+    setInterval(() => {
+      if (Math.random() < 0.7) generateParticles();
+      updateParticles();
+    }, 100);
+  </script>
+</body>
+</html>
